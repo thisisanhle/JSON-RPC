@@ -1,0 +1,112 @@
+To start with, we can use a JSON-RPC server implementation in our preferred programming language, such as Python or Node.js. We can also use a web framework like Flask or Express to handle the HTTP requests and responses.
+
+Next, we need to define the API endpoints and methods that our service will support. For serving up crypto price information, we can have an endpoint like /price that accepts a request with the coin symbol (e.g., BTC, ETH) and returns the current market price of the coin in a specific currency (e.g., USD, EUR). We can use an external API like CoinGecko or CryptoCompare to fetch the latest prices for the requested coin and currency.
+
+For tracking new coins, we can have another endpoint like /track that accepts a request with the coin symbol and adds it to a list of tracked coins. We can store the tracked coins in a database like MongoDB or Postgres, along with any other relevant information like the date/time of tracking, the user who initiated the tracking, etc.
+
+To ensure the security and integrity of our API service, we can implement authentication and authorization mechanisms, such as API keys and OAuth2. We can also use rate limiting to prevent abuse and throttling to handle high traffic.
+
+Once we have implemented the RPC API service, we can test it using tools like Postman or cURL. We can also create client libraries in different programming languages for easy integration with other applications.
+
+How to implement the required methods for the RPC API service. Here are the details of the three methods that the API should provide:
+
+Get Crypto Price:
+This method should accept two parameters: the symbol of the cryptocurrency (e.g., BTC, ETH) and the currency in which the price is required (e.g., USD, EUR). It should return the current market price of the given cryptocurrency in the requested currency. This method should query the database for the latest available price data for the given cryptocurrency and return it to the caller.
+
+Add Tracked Crypto:
+This method should accept a parameter for the symbol of the cryptocurrency that needs to be tracked. It should add the given cryptocurrency to the list of tracked coins in the database. If the cryptocurrency is already being tracked, the method should return an error indicating that the coin is already being tracked.
+
+Get Tracked Crypto:
+This method should return the list of cryptocurrencies that are being tracked in the database. It should return the symbol, name, and current market price of each tracked cryptocurrency, as well as any other relevant information like the date/time of tracking and the user who initiated the tracking.
+
+You can choose appropriate names for these methods based on your preference, but make sure to communicate them clearly in your submission.
+
+For the database, you can use any database you prefer, such as MongoDB, Postgres, or MySQL, depending on your experience and expediency. You can create a schema for the database if you are using a schema-based database, or use a middleware or API to interface with the database if you are using a schema-less database.
+
+For deploying the system, you can use an orchestration tool like Docker Compose to deploy the database, cache, and other services required by the API. Alternatively, you can provide instructions on how to install and configure the dependencies manually.
+
+For the coin data provider, you can use a free pricing data source like CoinGecko or CryptoCompare, or use the free tier of a paid provider like Binance or Coinbase. Be sure to communicate which data provider you end up going with in your submission.
+
+ implementing the required methods in Node.js using the json-rpc-engine library and a free pricing data source like CoinGecko:
+ 
+ const fetch = require('node-fetch');
+const JsonRpcEngine = require('json-rpc-engine');
+const HttpTransport = require('json-rpc-engine/src/http');
+
+// Define the list of tracked coins, initially set to 5
+let trackedCoins = ['BTC', 'ETH', 'ADA', 'XRP', 'DOT'];
+
+// Define the endpoint URL for the CoinGecko API
+const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
+
+// Create a new JSON-RPC engine
+const engine = new JsonRpcEngine();
+
+// Register the 'getCryptoPrice' method
+engine.addAsyncMethod('getCryptoPrice', async (coinSymbol, currency) => {
+  // Validate the input parameters
+  if (!coinSymbol || !currency) {
+    throw new Error('Invalid parameters');
+  }
+
+  // Query the CoinGecko API for the latest price data
+  const response = await fetch(`${COINGECKO_API_URL}/simple/price?ids=${coinSymbol}&vs_currencies=${currency}`);
+  const data = await response.json();
+
+  // Extract the price for the given coin and currency
+  const price = data[coinSymbol][currency];
+
+  // Return the price to the caller
+  return price;
+});
+
+// Register the 'addTrackedCrypto' method
+engine.addAsyncMethod('addTrackedCrypto', async (coinSymbol) => {
+  // Validate the input parameter
+  if (!coinSymbol) {
+    throw new Error('Invalid parameters');
+  }
+
+  // Check if the coin is already being tracked
+  if (trackedCoins.includes(coinSymbol)) {
+    throw new Error('Coin is already being tracked');
+  }
+
+  // Add the coin to the list of tracked coins
+  trackedCoins.push(coinSymbol);
+
+  // Return a success message to the caller
+  return `Added ${coinSymbol} to tracked coins`;
+});
+
+// Register the 'getTrackedCrypto' method
+engine.addAsyncMethod('getTrackedCrypto', async () => {
+  // Query the CoinGecko API for the latest price data for all tracked coins
+  const response = await fetch(`${COINGECKO_API_URL}/simple/price?ids=${trackedCoins.join(',')}&vs_currencies=usd`);
+  const data = await response.json();
+
+  // Construct an array of objects representing the tracked coins with their current price
+  const trackedCrypto = trackedCoins.map((coinSymbol) => {
+    return {
+      symbol: coinSymbol,
+      name: '', // TODO: Query the CoinGecko API for the name of the coin
+      price: data[coinSymbol].usd,
+      timestamp: new Date().toISOString() // TODO: Store the timestamp of the tracking in the database
+    };
+  });
+
+  // Return the tracked crypto array to the caller
+  return trackedCrypto;
+});
+
+// Create a new HTTP transport using the JSON-RPC engine
+const transport = new HttpTransport(engine);
+
+// Start the HTTP server
+transport.listen(5000, (err) => {
+  if (err) {
+    console.error('Error starting server:', err);
+  } else {
+    console.log('Server started on port 5000');
+  }
+});
